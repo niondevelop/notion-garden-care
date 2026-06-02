@@ -1,1 +1,56 @@
-
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit Notion verbinden",
+        "description": "Gib dein Notion API-Token ein. [Erstelle hier eine Integration]({setup_url})",
+        "data": {
+          "notion_token": "Notion Integrations-Token"
+        }
+      },
+      "parent_page": {
+        "title": "Notion Garden Care Datenbank einrichten",
+        "description": "Erstelle eine Seite in Notion, verbinde deine Integration mit ihr und füge die Seiten-URL oder -ID hier ein. Die Integration erstellt die Notion Garden Care Datenbank automatisch.",
+        "data": {
+          "parent_page_id": "Übergeordnete Seiten-URL oder -ID",
+          "create_database": "Notion Garden Care Datenbank automatisch erstellen",
+          "add_example_plants": "Beispiel-Pflanzen hinzufügen (Tomaten, Rosenstrauch, Apfelbaum, Basilikum)",
+          "create_plant_sensors": "Individuelle Sensoren für jede Pflanze erstellen"
+        }
+      },
+      "database": {
+        "title": "Bestehende Datenbank verbinden",
+        "description": "Wenn du bereits eine Notion Garden Care Datenbank hast, füge deren URL oder ID hier ein.",
+        "data": {
+          "database_id": "Datenbank-URL oder -ID"
+        }
+      },
+      "ai_config": {
+        "title": "KI-Konfiguration",
+        "description": "Wähle einen KI-Konversationsassistenten aus, um die Funktion 'Pflanze hinzufügen' zu aktivieren. Die KI füllt Pflanzenpflege-Informationen automatisch basierend auf deinem Home Assistant Standort (Koordinaten, Höhe über Meeresspiegel, Land, Zeitzone) aus. Du kannst diesen Schritt überspringen und später konfigurieren.",
+        "data": {
+          "conversation_agent": "Konversationsassistent (KI-Modell)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zu Notion fehlgeschlagen. Bitte überprüfe dein Token.",
+      "invalid_auth": "Ungültige Authentifizierung. Bitte überprüfe dein Notion-Token.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten."
+    },
+    "abort": {
+      "already_configured": "Diese Notion-Integration ist bereits konfiguriert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "KI-Konfiguration",
+        "description": "Wähle einen KI-Konversationsassistenten aus, um die Funktion 'Pflanze hinzufügen' zu aktivieren. Die KI füllt Pflanzenpflege-Informationen automatisch basierend auf deinem Home Assistant Standort aus.",
+        "data": {
+          "conversation_agent": "Konversationsassistent (KI-Modell)"
+        }
+      }
+    }
+  }
+}
