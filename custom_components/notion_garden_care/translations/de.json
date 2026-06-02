@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Mit Notion verbinden",
-        "description": "Gib dein Notion APIToken ein. [Erstelle hier eine Integration]({setup_url})",
+        "description": "Gib dein Notion API Token ein. [Erstelle hier eine Integration]({setup_url})",
         "data": {
           "notion_token": "Notion Integrations-Token"
         }
