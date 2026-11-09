@@ -204,6 +204,40 @@ mark_as_sanded:
       selector:
         date:
 
+mark_as_mowed:
+  name: Mark Lawn as Mowed
+  description: Updates the "Last Mowed" date in Notion for a lawn or all plants in a HA area
+  fields:
+    entity_id:
+      name: Plant
+      description: Select the lawn sensor
+      selector:
+        entity:
+          integration: notion_garden_care
+          domain: sensor
+    page_id:
+      name: Page ID
+      description: The Notion page ID (alternative to selecting entity)
+      example: "1234567890abcdef"
+      selector:
+        text:
+    plant_name:
+      name: Plant Name
+      description: The name of the lawn (alternative to selecting entity)
+      example: "Lawn"
+      selector:
+        text:
+    area_id:
+      name: Area
+      description: Update all plants in this HA area (alternative to selecting a single plant)
+      selector:
+        area:
+    date:
+      name: Date
+      description: Date to set (defaults to today if not specified)
+      selector:
+        date:
+
 update_plant_property:
   name: Update Plant Property
   description: Updates any property in Notion for a plant. Supports text, number, checkbox, date, and multi-select values.

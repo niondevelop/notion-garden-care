@@ -466,3 +466,9 @@ If the formula is invalid or has missing data:
 ---
 
 **Need help?** [Open an issue](https://github.com/pfalzcraft/notion-garden-care/issues)
+
+---
+
+## 📡 Optional: Linked Plant Sensors
+
+Plants can additionally be linked to real sensors (soil moisture, temperature, ...). This adds the `sensors` / `water_source` attributes, extra states such as `Too Wet` and the `sensor.plants_needing_attention` sensor. See [SENSOR_MONITORING.md](SENSOR_MONITORING.md).

@@ -557,6 +557,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Setup platforms (creates coordinator and plant sensor entities)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    # Reload when options change (AI agent, linked plant sensors) so the
+    # sensor entities pick up the new configuration.
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+
 
     # Helper to get page_id from entity, page_id, or plant_name
     def _get_page_id_from_call(call: ServiceCall) -> str | None:
@@ -759,6 +763,19 @@ Please respond ONLY with a valid JSON object (no markdown, no explanation) with 
 }}
 Respond ONLY with the JSON object, nothing else."""
 
+        # Free-text fields in the user's Home Assistant language, while the
+        # enumerated values must stay in English (they are Notion options).
+        ha_language = (hass.config.language or "en").split("-")[0].lower()
+        if ha_language != "en":
+            prompt += f"""
+
+LANGUAGE: Write all free-text values (height, growth_per_year, fertilizer_type,
+prune_instructions, harvest_notes, companion_plants, bad_companions,
+care_instructions, special_notes) in the language with the code "{ha_language}".
+Keep "name" exactly as given. Keep ALL enumerated values (type, lifecycle,
+hardiness_zone, soil_type, soil_ph, sun_exposure, water_amount, toxicity) and
+ALL month names in prune_months/harvest_months exactly in English as listed above."""
+
         try:
             # Call the conversation agent
             _LOGGER.info("Calling conversation agent '%s' for plant '%s'", agent_id, plant_name)
@@ -902,6 +919,11 @@ Respond ONLY with the JSON object, nothing else."""
     )
 
     return True
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the config entry after the options were changed."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

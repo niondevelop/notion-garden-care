@@ -1,0 +1,341 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit Notion verbinden",
+        "description": "Gib deinen Notion-API-Token ein. [Integration hier erstellen]({setup_url})",
+        "data": {
+          "notion_token": "Notion-Integrations-Token"
+        }
+      },
+      "parent_page": {
+        "title": "Gartenpflege-Datenbank einrichten",
+        "description": "Erstelle in Notion eine Seite, verbinde deine Integration damit und füge hier die Seiten-URL oder -ID ein. Die Integration legt die Gartenpflege-Datenbank automatisch an.",
+        "data": {
+          "parent_page_id": "URL oder ID der übergeordneten Seite",
+          "create_database": "Gartenpflege-Datenbank automatisch erstellen",
+          "add_example_plants": "Beispielpflanzen hinzufügen (Tomaten, Rosenstrauch, Apfelbaum, Basilikum)",
+          "create_plant_sensors": "Für jede Pflanze einen eigenen Sensor erstellen"
+        }
+      },
+      "database": {
+        "title": "Bestehende Datenbank verbinden",
+        "description": "Wenn du bereits eine Gartenpflege-Datenbank hast, füge hier ihre URL oder ID ein.",
+        "data": {
+          "database_id": "Datenbank-URL oder -ID"
+        }
+      },
+      "ai_config": {
+        "title": "KI-Konfiguration",
+        "description": "Wähle einen KI-Konversationsagenten, um die Funktion „Pflanze hinzufügen“ zu aktivieren. Die KI ergänzt die Pflegeinformationen automatisch anhand deines Home-Assistant-Standorts (Koordinaten, Höhe, Land, Zeitzone). Du kannst diesen Schritt überspringen und später konfigurieren.",
+        "data": {
+          "conversation_agent": "Konversationsagent (KI-Modell)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zu Notion fehlgeschlagen. Bitte prüfe deinen Token.",
+      "invalid_auth": "Ungültige Authentifizierung. Bitte prüfe deinen Notion-Token.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten"
+    },
+    "abort": {
+      "already_configured": "Diese Notion-Integration ist bereits eingerichtet"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Notion Garden Care – Optionen",
+        "description": "Was möchtest du einstellen?",
+        "menu_options": {
+          "ai_agent": "KI-Agent (Pflanze hinzufügen)",
+          "plant_sensors": "Pflanzensensoren (optional)"
+        }
+      },
+      "ai_agent": {
+        "title": "KI-Konfiguration",
+        "description": "Wähle einen KI-Konversationsagenten, um die Funktion „Pflanze hinzufügen“ zu aktivieren. Die KI ergänzt die Pflegeinformationen automatisch anhand deines Home-Assistant-Standorts.",
+        "data": {
+          "conversation_agent": "Konversationsagent (KI-Modell)"
+        }
+      },
+      "plant_sensors": {
+        "title": "Pflanzensensoren",
+        "description": "Optional kannst du echte Sensoren (z. B. Bodenfeuchte) mit einer Pflanze verknüpfen. Pflanzen ohne Sensoren funktionieren weiterhin über den Notion-Zeitplan. Mit 📡 markierte Pflanzen haben bereits Sensoren.",
+        "data": {
+          "plant": "Pflanze"
+        }
+      },
+      "plant_sensor_config": {
+        "title": "Sensoren für {plant}",
+        "description": "Wähle die Sensoren für **{plant}** und lege den Wohlfühlbereich fest. Lass Sensoren leer, die du nicht hast. Grenzwerte gelten in der Einheit des gewählten Sensors. Ist ein Bodenfeuchte-Sensor mit Minimum verknüpft, entscheidet er (statt des Zeitplans), wann gegossen werden muss. „Zu dunkel“ wird nur geprüft, solange die Sonne aufgegangen ist.",
+        "data": {
+          "moisture_entity": "Bodenfeuchte – Sensor",
+          "min_moisture": "Bodenfeuchte – Minimum",
+          "max_moisture": "Bodenfeuchte – Maximum",
+          "temperature_entity": "Temperatur – Sensor",
+          "min_temperature": "Temperatur – Minimum",
+          "max_temperature": "Temperatur – Maximum",
+          "illuminance_entity": "Helligkeit – Sensor",
+          "min_illuminance": "Helligkeit – Minimum",
+          "max_illuminance": "Helligkeit – Maximum",
+          "conductivity_entity": "Leitfähigkeit (Nährstoffe) – Sensor",
+          "min_conductivity": "Leitfähigkeit (Nährstoffe) – Minimum",
+          "max_conductivity": "Leitfähigkeit (Nährstoffe) – Maximum",
+          "humidity_entity": "Luftfeuchtigkeit – Sensor",
+          "min_humidity": "Luftfeuchtigkeit – Minimum",
+          "max_humidity": "Luftfeuchtigkeit – Maximum",
+          "battery_entity": "Sensor-Batterie – Sensor",
+          "min_battery": "Sensor-Batterie – Minimum",
+          "max_battery": "Sensor-Batterie – Maximum",
+          "remove_sensors": "Alle Sensoren von dieser Pflanze entfernen"
+        }
+      }
+    },
+    "abort": {
+      "no_plants": "Es sind noch keine Pflanzen geladen. Stelle sicher, dass die Integration eingerichtet ist und die Notion-Datenbank Pflanzen enthält."
+    }
+  },
+  "services": {
+    "mark_as_watered": {
+      "name": "Pflanze als gegossen markieren",
+      "description": "Setzt das Datum „Last Watered“ in Notion für eine Pflanze oder alle Pflanzen in einem HA-Bereich",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Alle Pflanzen in diesem HA-Bereich aktualisieren (Alternative zu einer einzelnen Pflanze)"
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Zu setzendes Datum (Standard: heute)"
+        }
+      }
+    },
+    "mark_as_fertilized": {
+      "name": "Pflanze als gedüngt markieren",
+      "description": "Setzt das Datum „Last Fertilized“ in Notion für eine Pflanze oder alle Pflanzen in einem HA-Bereich",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Alle Pflanzen in diesem HA-Bereich aktualisieren (Alternative zu einer einzelnen Pflanze)"
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Zu setzendes Datum (Standard: heute)"
+        }
+      }
+    },
+    "mark_as_pruned": {
+      "name": "Pflanze als geschnitten markieren",
+      "description": "Setzt das Datum „Last Pruned“ in Notion für eine Pflanze oder alle Pflanzen in einem HA-Bereich",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Alle Pflanzen in diesem HA-Bereich aktualisieren (Alternative zu einer einzelnen Pflanze)"
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Zu setzendes Datum (Standard: heute)"
+        }
+      }
+    },
+    "mark_as_aerated": {
+      "name": "Rasen als vertikutiert/belüftet markieren",
+      "description": "Setzt das Datum „Last Aeration“ in Notion für einen Rasen oder alle Pflanzen in einem HA-Bereich",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Alle Pflanzen in diesem HA-Bereich aktualisieren (Alternative zu einer einzelnen Pflanze)"
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Zu setzendes Datum (Standard: heute)"
+        }
+      }
+    },
+    "mark_as_harvested": {
+      "name": "Pflanze als geerntet markieren",
+      "description": "Setzt das Datum „Last Harvested“ in Notion für eine Pflanze oder alle Pflanzen in einem HA-Bereich",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Alle Pflanzen in diesem HA-Bereich aktualisieren (Alternative zu einer einzelnen Pflanze)"
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Zu setzendes Datum (Standard: heute)"
+        }
+      }
+    },
+    "mark_as_sanded": {
+      "name": "Rasen als gesandet markieren",
+      "description": "Setzt das Datum „Last Sanded“ in Notion für einen Rasen oder alle Pflanzen in einem HA-Bereich",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Alle Pflanzen in diesem HA-Bereich aktualisieren (Alternative zu einer einzelnen Pflanze)"
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Zu setzendes Datum (Standard: heute)"
+        }
+      }
+    },
+    "mark_as_mowed": {
+      "name": "Rasen als gemäht markieren",
+      "description": "Setzt das Datum „Last Mowed“ in Notion für einen Rasen oder alle Pflanzen in einem HA-Bereich",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        },
+        "area_id": {
+          "name": "Bereich",
+          "description": "Alle Pflanzen in diesem HA-Bereich aktualisieren (Alternative zu einer einzelnen Pflanze)"
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Zu setzendes Datum (Standard: heute)"
+        }
+      }
+    },
+    "update_plant_property": {
+      "name": "Pflanzeneigenschaft ändern",
+      "description": "Ändert eine beliebige Notion-Eigenschaft einer Pflanze. Unterstützt Text, Zahl, Checkbox, Datum und Mehrfachauswahl.",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        },
+        "property_name": {
+          "name": "Eigenschaft",
+          "description": "Die zu ändernde Notion-Eigenschaft"
+        },
+        "property_value": {
+          "name": "Wert",
+          "description": "Der zu setzende Wert. Der Typ wird automatisch erkannt: Zahl, true/false für Checkbox, JJJJ-MM-TT für Datum, Liste für Mehrfachauswahl, sonst Text"
+        }
+      }
+    },
+    "refresh_database": {
+      "name": "Datenbank aktualisieren",
+      "description": "Lädt die Daten der Notion-Gartenpflege-Datenbank manuell neu"
+    },
+    "add_plant": {
+      "name": "Pflanze hinzufügen (KI)",
+      "description": "Fügt eine neue Pflanze hinzu; die KI ergänzt die Pflegeinformationen automatisch. Erfordert einen in den Integrationsoptionen konfigurierten Konversationsagenten.",
+      "fields": {
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Name der hinzuzufügenden Pflanze (z. B. „Lavendel“, „Erdbeere“, „Minze“)"
+        }
+      }
+    },
+    "delete_plant": {
+      "name": "Pflanze löschen",
+      "description": "Entfernt eine Pflanze aus der Notion-Datenbank (verschiebt die Seite in den Papierkorb) und löscht den zugehörigen Sensor.",
+      "fields": {
+        "entity_id": {
+          "name": "Pflanze",
+          "description": "Den zu löschenden Pflanzen-Sensor auswählen"
+        },
+        "page_id": {
+          "name": "Seiten-ID",
+          "description": "Die Notion-Seiten-ID (Alternative zur Auswahl der Entität)"
+        },
+        "plant_name": {
+          "name": "Pflanzenname",
+          "description": "Der Name der Pflanze (Alternative zur Auswahl der Entität)"
+        }
+      }
+    }
+  }
+}

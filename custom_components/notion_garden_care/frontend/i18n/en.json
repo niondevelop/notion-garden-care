@@ -1,0 +1,221 @@
+{
+  "card": {
+    "water": "Water",
+    "fertilize": "Fertilize",
+    "prune": "Prune",
+    "harvest": "Harvest",
+    "aeration": "Aeration",
+    "sanding": "Sanding",
+    "mowed": "Mowed",
+    "next": "Next: {value}",
+    "last": "Last: {value}",
+    "overdue": "{days}d overdue",
+    "today": "today!",
+    "tomorrow": "tomorrow",
+    "in_days": "{days}d",
+    "show_attributes": "Show all attributes",
+    "details": "{name} - Details",
+    "entity_not_found": "Entity not found: {entity}",
+    "define_entity": "Please define an entity",
+    "by_sensor": "by sensor",
+    "sensors_title": "Sensors"
+  },
+  "actions": {
+    "watered": "Watered",
+    "fertilized": "Fertilized",
+    "pruned": "Pruned",
+    "harvested": "Harvested",
+    "aerated": "Aerated",
+    "sanded": "Sanded",
+    "mowed": "Mowed",
+    "delete": "Delete",
+    "delete_title": "Delete this plant from Notion",
+    "delete_confirm": "Delete \"{name}\"?",
+    "delete_yes": "Yes, delete",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "done": "Done!",
+    "error": "Error",
+    "deleting": "Deleting...",
+    "deleted": "Deleted!"
+  },
+  "editor": {
+    "plant_entity": "Plant Entity",
+    "select_plant": "Select a plant...",
+    "hint": "Select a plant from your Notion Garden Care database",
+    "add_plant_note": "This card provides a form to add new plants using AI. No configuration required."
+  },
+  "add_plant": {
+    "title": "Add New Plant",
+    "placeholder": "Enter plant name (e.g., Lavender, Tomato, Oak Tree)",
+    "button": "Add Plant",
+    "adding": "Adding...",
+    "hint": "AI will automatically fill in care instructions, watering schedule, and more.",
+    "enter_name": "Please enter a plant name",
+    "exists": "\"{name}\" already exists in your garden",
+    "added": "\"{name}\" added! The dashboard will update in a moment.",
+    "failed": "Failed to add plant: {error}"
+  },
+  "area": {
+    "default_name": "Area",
+    "water_all": "Water All",
+    "fertilize_all": "Fertilize All",
+    "prune_all": "Prune All",
+    "harvest_all": "Harvest All",
+    "no_plants": "No plants found. Use the Add Plant form above to get started."
+  },
+  "picker": {
+    "plant_card_name": "Plant Care Card",
+    "plant_card_desc": "Display plant care information from Notion Garden Care",
+    "add_card_name": "Add Plant Card",
+    "add_card_desc": "Form to add new plants with AI-powered care info",
+    "root_card_name": "Garden Care Dashboard",
+    "root_card_desc": "Auto-discovering garden care dashboard — plants grouped by HA area in a responsive grid"
+  },
+  "sensors": {
+    "moisture": "Soil moisture",
+    "temperature": "Temperature",
+    "illuminance": "Light",
+    "conductivity": "Fertility",
+    "humidity": "Air humidity",
+    "battery": "Battery"
+  },
+  "sensor_status": {
+    "ok": "OK",
+    "low": "too low",
+    "high": "too high",
+    "unavailable": "unavailable",
+    "moisture": {
+      "low": "too dry",
+      "high": "too wet"
+    },
+    "temperature": {
+      "low": "too cold",
+      "high": "too hot"
+    },
+    "illuminance": {
+      "low": "too dark",
+      "high": "too bright"
+    },
+    "conductivity": {
+      "low": "low nutrients",
+      "high": "too much fertilizer"
+    },
+    "humidity": {
+      "low": "air too dry",
+      "high": "air too humid"
+    },
+    "battery": {
+      "low": "battery low"
+    }
+  },
+  "attributes": {
+    "page_id": "Page ID",
+    "plant_name": "Plant Name",
+    "name": "Name",
+    "type": "Type",
+    "active": "Active",
+    "lifecycle": "Lifecycle",
+    "plant_date": "Plant Date",
+    "height": "Height",
+    "growth_per_year": "Growth per Year",
+    "hardiness_zone": "Hardiness Zone",
+    "sun_exposure": "Sun Exposure",
+    "soil_type": "Soil Type",
+    "soil_ph": "Soil pH",
+    "water_interval_days": "Water Interval (days)",
+    "last_watered": "Last Watered",
+    "next_water": "Next Water",
+    "water_amount": "Water Amount",
+    "fertilize_interval_days": "Fertilize Interval (days)",
+    "last_fertilized": "Last Fertilized",
+    "next_fertilize": "Next Fertilize",
+    "fertilizer_type": "Fertilizer Type",
+    "prune_months": "Prune Months",
+    "last_pruned": "Last Pruned",
+    "prune_instructions": "Prune Instructions",
+    "harvest_months": "Harvest Months",
+    "last_harvested": "Last Harvested",
+    "harvest_notes": "Harvest Notes",
+    "aeration_interval_days": "Aeration Interval (days)",
+    "last_aeration": "Last Aeration",
+    "next_aeration": "Next Aeration",
+    "sanding_interval_days": "Sanding Interval (days)",
+    "last_sanded": "Last Sanded",
+    "next_sanding": "Next Sanding",
+    "last_mowed": "Last Mowed",
+    "companion_plants": "Companion Plants",
+    "bad_companions": "Bad Companions",
+    "bee_friendly": "Bee Friendly",
+    "toxicity": "Toxicity",
+    "winterize": "Winterize",
+    "care_instructions": "Care Instructions",
+    "special_notes": "Special Notes",
+    "notes": "Notes",
+    "additional_information": "Additional Information"
+  },
+  "values": {
+    "yes": "Yes",
+    "no": "No",
+    "type": {
+      "Plant": "Plant",
+      "Tree": "Tree",
+      "Shrub": "Shrub",
+      "Vegetable": "Vegetable",
+      "Herb": "Herb",
+      "Lawn": "Lawn",
+      "Flower": "Flower"
+    },
+    "lifecycle": {
+      "Perennial": "Perennial",
+      "Annual": "Annual",
+      "Biennial": "Biennial"
+    },
+    "sun_exposure": {
+      "Full Sun": "Full Sun",
+      "Partial Sun": "Partial Sun",
+      "Partial Shade": "Partial Shade",
+      "Full Shade": "Full Shade"
+    },
+    "water_amount": {
+      "Low": "Low",
+      "Medium": "Medium",
+      "High": "High"
+    },
+    "soil_type": {
+      "Sandy": "Sandy",
+      "Loamy": "Loamy",
+      "Clay": "Clay",
+      "Silty": "Silty",
+      "Peaty": "Peaty",
+      "Chalky": "Chalky",
+      "Any": "Any"
+    },
+    "soil_ph": {
+      "Acidic (pH < 6)": "Acidic (pH < 6)",
+      "Neutral (pH 6-7)": "Neutral (pH 6-7)",
+      "Alkaline (pH > 7)": "Alkaline (pH > 7)",
+      "Any": "Any"
+    },
+    "toxicity": {
+      "Safe": "Safe",
+      "Toxic to Pets": "Toxic to Pets",
+      "Toxic to Children": "Toxic to Children",
+      "Toxic to Both": "Toxic to Both"
+    },
+    "month": {
+      "January": "January",
+      "February": "February",
+      "March": "March",
+      "April": "April",
+      "May": "May",
+      "June": "June",
+      "July": "July",
+      "August": "August",
+      "September": "September",
+      "October": "October",
+      "November": "November",
+      "December": "December"
+    }
+  }
+}

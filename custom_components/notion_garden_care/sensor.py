@@ -11,8 +11,9 @@ from notion_client.errors import APIResponseError
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -20,7 +21,18 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
-from .const import DOMAIN, CONF_CREATE_PLANT_SENSORS
+from .const import DOMAIN, CONF_CREATE_PLANT_SENSORS, CONF_PLANT_SENSORS
+from .monitoring import (
+    WATER_SOURCE_SCHEDULE,
+    WATER_SOURCE_SENSOR,
+    all_linked_entity_ids,
+    get_plant_sensor_config,
+    has_any_sensor,
+    linked_entity_ids,
+    moisture_says_needs_water,
+    read_plant_sensors,
+    sensor_problem_states,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +41,67 @@ SCAN_INTERVAL = timedelta(seconds=3600)
 
 STORAGE_KEY = "notion_garden_care"
 STORAGE_VERSION = 1
+
+
+def _formula_date(plant: dict, prop_name: str) -> str | None:
+    """Return the start date (YYYY-MM-DD) of a Notion date formula property."""
+    try:
+        prop = plant.get("properties", {}).get(prop_name, {})
+        formula = prop.get("formula")
+        if formula and formula.get("type") == "date":
+            date_obj = formula.get("date")
+            if date_obj:
+                return date_obj.get("start") if isinstance(date_obj, dict) else date_obj
+    except (KeyError, TypeError, AttributeError):
+        pass
+    return None
+
+
+def _schedule_due(plant: dict, prop_name: str, today: str) -> str | None:
+    """Return the due date if the scheduled date is today or in the past."""
+    due = _formula_date(plant, prop_name)
+    if due and due <= today:
+        return due
+    return None
+
+
+def plant_water_status(
+    hass: HomeAssistant, entry: ConfigEntry, plant: dict, today: str
+) -> tuple[bool, str, str | None]:
+    """Decide whether a plant needs water.
+
+    Returns (needs_water, source, due_date). Without a linked moisture sensor
+    the Notion schedule decides (unchanged behaviour). With a usable moisture
+    reading, the sensor decides.
+    """
+    config = get_plant_sensor_config(entry, plant.get("id", ""))
+    if config:
+        decision = moisture_says_needs_water(read_plant_sensors(hass, config))
+        if decision is not None:
+            return decision, WATER_SOURCE_SENSOR, (today if decision else None)
+    due = _schedule_due(plant, "Next Water", today)
+    return due is not None, WATER_SOURCE_SCHEDULE, due
+
+
+class _LinkedSensorsMixin:
+    """Re-evaluate an entity whenever one of the linked HA sensors changes."""
+
+    def _linked_entity_ids(self) -> list[str]:  # pragma: no cover - overridden
+        return []
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        entity_ids = self._linked_entity_ids()
+        if not entity_ids:
+            return
+
+        @callback
+        def _linked_changed(event: Event) -> None:
+            self.async_write_ha_state()
+
+        self.async_on_remove(
+            async_track_state_change_event(self.hass, entity_ids, _linked_changed)
+        )
 
 
 async def async_setup_entry(
@@ -88,7 +161,7 @@ async def async_setup_entry(
     # Create aggregate sensors (always created)
     sensors = [
         NotionGardenCareDatabaseSensor(coordinator),
-        PlantsToWaterSensor(coordinator),
+        PlantsToWaterSensor(coordinator, config_entry),
         PlantsToFertilizeSensor(coordinator),
         PlantsToPruneSensor(coordinator),
         ActivePlantsCountSensor(coordinator),
@@ -98,10 +171,27 @@ async def async_setup_entry(
     create_plant_sensors = config_entry.data.get(CONF_CREATE_PLANT_SENSORS, True)
     if create_plant_sensors and coordinator.data:
         for plant_data in coordinator.data.get("results", []):
-            plant_sensor = PlantSensor(coordinator, plant_data)
+            plant_sensor = PlantSensor(coordinator, plant_data, config_entry)
             if plant_sensor.name:  # Only add if plant has a valid name
                 sensors.append(plant_sensor)
         _LOGGER.info("Created %d individual plant sensors", len(sensors) - 5)
+
+    # Only when at least one plant has linked sensors: summary of all
+    # sensor-detected problems. Without sensors, nothing changes.
+    if any(
+        has_any_sensor(cfg or {})
+        for cfg in (config_entry.options.get(CONF_PLANT_SENSORS) or {}).values()
+    ):
+        sensors.append(PlantsNeedingAttentionSensor(coordinator, config_entry))
+    else:
+        # All sensors were unlinked: remove the summary entity again so the
+        # integration looks exactly like before sensors were configured.
+        from homeassistant.helpers import entity_registry as er
+
+        registry = er.async_get(hass)
+        stale = registry.async_get_entity_id("sensor", DOMAIN, "plants_needing_attention")
+        if stale:
+            registry.async_remove(stale)
 
     async_add_entities(sensors)
 
@@ -193,12 +283,13 @@ class NotionGardenCareDatabaseSensor(CoordinatorEntity, SensorEntity):
         }
 
 
-class PlantsToWaterSensor(CoordinatorEntity, SensorEntity):
-    """Sensor for plants that need watering."""
+class PlantsToWaterSensor(_LinkedSensorsMixin, CoordinatorEntity, SensorEntity):
+    """Sensor for plants that need watering (schedule or moisture sensor)."""
 
-    def __init__(self, coordinator: DataUpdateCoordinator) -> None:
+    def __init__(self, coordinator: DataUpdateCoordinator, config_entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
+        self._entry = config_entry
         self._attr_name = "Plants to Water"
         self._attr_unique_id = "plants_to_water"
         self._attr_icon = "mdi:watering-can"
@@ -217,35 +308,34 @@ class PlantsToWaterSensor(CoordinatorEntity, SensorEntity):
             "plant_details": plants_to_water,
         }
 
+    def _linked_entity_ids(self) -> list[str]:
+        return all_linked_entity_ids(self._entry)
+
     def _get_plants_to_water(self) -> list[dict[str, Any]]:
         """Get list of plants that need watering."""
         if not self.coordinator.data:
             return []
 
-        plants = []
         from datetime import datetime
 
         today = datetime.now().strftime("%Y-%m-%d")
+        plants = []
 
         for plant in self.coordinator.data.get("results", []):
             try:
-                next_water_prop = plant.get("properties", {}).get("Next Water", {})
-                if next_water_prop.get("formula"):
-                    formula_data = next_water_prop["formula"]
-                    # Check if formula type is date
-                    if formula_data.get("type") == "date":
-                        date_obj = formula_data.get("date")
-                        if date_obj:
-                            # Extract the start date from the date object
-                            next_water_date = date_obj.get("start") if isinstance(date_obj, dict) else date_obj
-                            if next_water_date and next_water_date <= today:
-                                name = self._get_plant_name(plant)
-                                if name:
-                                    plants.append({
-                                        "name": name,
-                                        "page_id": plant["id"],
-                                        "due_date": next_water_date,
-                                    })
+                needs_water, source, due = plant_water_status(
+                    self.hass, self._entry, plant, today
+                )
+                if not needs_water:
+                    continue
+                name = self._get_plant_name(plant)
+                if name:
+                    plants.append({
+                        "name": name,
+                        "page_id": plant["id"],
+                        "due_date": due,
+                        "source": source,
+                    })
             except (KeyError, TypeError):
                 continue
 
@@ -427,11 +517,17 @@ class ActivePlantsCountSensor(CoordinatorEntity, SensorEntity):
         return count
 
 
-class PlantSensor(CoordinatorEntity, SensorEntity):
+class PlantSensor(_LinkedSensorsMixin, CoordinatorEntity, SensorEntity):
     """Individual sensor for a specific plant."""
 
-    def __init__(self, coordinator: DataUpdateCoordinator, plant_data: dict) -> None:
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        plant_data: dict,
+        config_entry: ConfigEntry,
+    ) -> None:
         """Initialize the plant sensor."""
+        self._entry = config_entry
         self._page_id = plant_data.get("id", "")
         self._plant_name = self._extract_plant_name(plant_data)
 
@@ -511,15 +607,13 @@ class PlantSensor(CoordinatorEntity, SensorEntity):
 
         statuses = []
 
-        # Check if needs watering
+        # Check if needs watering (moisture sensor if linked, else schedule)
         try:
-            next_water_prop = plant_data.get("properties", {}).get("Next Water", {})
-            if next_water_prop.get("formula") and next_water_prop["formula"].get("type") == "date":
-                date_obj = next_water_prop["formula"].get("date")
-                if date_obj:
-                    next_water_date = date_obj.get("start") if isinstance(date_obj, dict) else date_obj
-                    if next_water_date and next_water_date <= today:
-                        statuses.append("Needs Water")
+            needs_water, _source, _due = plant_water_status(
+                self.hass, self._entry, plant_data, today
+            )
+            if needs_water:
+                statuses.append("Needs Water")
         except (KeyError, TypeError):
             pass
 
@@ -579,9 +673,19 @@ class PlantSensor(CoordinatorEntity, SensorEntity):
         except (KeyError, TypeError):
             pass
 
+        # Additional problems reported by linked sensors (only if configured)
+        sensor_config = get_plant_sensor_config(self._entry, self._page_id)
+        if sensor_config:
+            for problem in sensor_problem_states(read_plant_sensors(self.hass, sensor_config)):
+                if problem not in statuses:
+                    statuses.append(problem)
+
         if statuses:
             return ", ".join(statuses)
         return "OK"
+
+    def _linked_entity_ids(self) -> list[str]:
+        return linked_entity_ids(get_plant_sensor_config(self._entry, self._page_id))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -683,6 +787,16 @@ class PlantSensor(CoordinatorEntity, SensorEntity):
             except (KeyError, TypeError, IndexError):
                 continue
 
+        # Live sensor readings (only present when sensors are linked)
+        sensor_config = get_plant_sensor_config(self._entry, self._page_id)
+        if has_any_sensor(sensor_config):
+            from datetime import datetime
+            attributes["sensors"] = read_plant_sensors(self.hass, sensor_config)
+            _needs, source, _due = plant_water_status(
+                self.hass, self._entry, plant_data, datetime.now().strftime("%Y-%m-%d")
+            )
+            attributes["water_source"] = source
+
         return attributes
 
     def _extract_property_value(self, prop_value: dict) -> Any:
@@ -756,3 +870,57 @@ class PlantSensor(CoordinatorEntity, SensorEntity):
             pass
 
         return "mdi:flower"
+
+
+
+class PlantsNeedingAttentionSensor(_LinkedSensorsMixin, CoordinatorEntity, SensorEntity):
+    """Plants with at least one out-of-range sensor reading.
+
+    Only created when at least one plant has linked sensors.
+    """
+
+    def __init__(self, coordinator: DataUpdateCoordinator, config_entry: ConfigEntry) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._entry = config_entry
+        self._attr_name = "Plants Needing Attention"
+        self._attr_unique_id = "plants_needing_attention"
+        self._attr_icon = "mdi:alert-circle-outline"
+
+    def _linked_entity_ids(self) -> list[str]:
+        return all_linked_entity_ids(self._entry)
+
+    def _get_problems(self) -> list[dict[str, Any]]:
+        if not self.coordinator.data:
+            return []
+        problems = []
+        for plant in self.coordinator.data.get("results", []):
+            config = get_plant_sensor_config(self._entry, plant.get("id", ""))
+            if not has_any_sensor(config):
+                continue
+            readings = read_plant_sensors(self.hass, config)
+            issues = sensor_problem_states(readings)
+            if moisture_says_needs_water(readings):
+                issues.insert(0, "Needs Water")
+            if not issues:
+                continue
+            try:
+                name = plant["properties"]["Name"]["title"][0]["plain_text"]
+            except (KeyError, TypeError, IndexError):
+                name = plant.get("id", "")[:8]
+            problems.append({"name": name, "page_id": plant.get("id"), "problems": issues})
+        return problems
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of plants with sensor problems."""
+        return len(self._get_problems())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        problems = self._get_problems()
+        return {
+            "plants": [p["name"] for p in problems],
+            "plant_details": problems,
+        }

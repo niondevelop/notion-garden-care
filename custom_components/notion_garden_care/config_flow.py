@@ -12,6 +12,7 @@ from notion_client.errors import APIResponseError
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 from homeassistant.exceptions import HomeAssistantError
 
 from homeassistant.helpers import entity_registry as er
@@ -36,6 +37,14 @@ from .const import (
     SOIL_PH,
     MONTHS,
     EXAMPLE_PLANTS,
+    CONF_PLANT,
+    CONF_PLANT_SENSORS,
+    CONF_REMOVE_SENSORS,
+    DEFAULT_SENSOR_THRESHOLDS,
+    MONITORED_SENSOR_TYPES,
+    sensor_entity_key,
+    sensor_max_key,
+    sensor_min_key,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -669,32 +678,172 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for Notion Garden Care."""
+    """Handle options flow for Notion Garden Care.
+
+    The options are split into two areas (menu):
+      * AI agent      – conversation agent used by the "Add Plant" feature
+      * Plant sensors – optionally link real HA sensors to a plant
+    """
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self._config_entry = config_entry
+        self._selected_page_id: str | None = None
+        self._selected_plant_name: str = ""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Manage the options."""
+        """Show the options menu."""
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["ai_agent", "plant_sensors"],
+        )
+
+    # ── AI agent ─────────────────────────────────────────────────────────────
+    async def async_step_ai_agent(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select the conversation agent."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            options = dict(self._config_entry.options)
+            options[CONF_CONVERSATION_AGENT] = user_input.get(CONF_CONVERSATION_AGENT, "")
+            return self.async_create_entry(title="", data=options)
 
-        # Get list of conversation agents
         conversation_agents = await self._get_conversation_agents()
-
-        # Get current value
         current_agent = self._config_entry.options.get(CONF_CONVERSATION_AGENT, "")
+        if current_agent not in conversation_agents:
+            current_agent = ""
 
         return self.async_show_form(
-            step_id="init",
+            step_id="ai_agent",
             data_schema=vol.Schema(
                 {
                     vol.Optional(CONF_CONVERSATION_AGENT, default=current_agent): vol.In(conversation_agents),
                 }
             ),
+        )
+
+    # ── Plant sensors ────────────────────────────────────────────────────────
+    def _get_plants(self) -> dict[str, str]:
+        """Return {page_id: plant name} from the coordinator cache."""
+        entry_data = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id, {})
+        coordinator = entry_data.get("coordinator")
+        plants: dict[str, str] = {}
+        if not coordinator or not coordinator.data:
+            return plants
+        configured = self._config_entry.options.get(CONF_PLANT_SENSORS) or {}
+        for page in coordinator.data.get("results", []):
+            try:
+                name = page["properties"]["Name"]["title"][0]["plain_text"]
+            except (KeyError, TypeError, IndexError):
+                continue
+            label = f"{name} 📡" if configured.get(page.get("id")) else name
+            plants[page["id"]] = label
+        return dict(sorted(plants.items(), key=lambda item: item[1].lower()))
+
+    async def async_step_plant_sensors(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Choose the plant whose sensors should be configured."""
+        plants = self._get_plants()
+        if not plants:
+            return self.async_abort(reason="no_plants")
+
+        if user_input is not None:
+            self._selected_page_id = user_input[CONF_PLANT]
+            self._selected_plant_name = plants.get(self._selected_page_id, "").replace(" 📡", "")
+            return await self.async_step_plant_sensor_config()
+
+        return self.async_show_form(
+            step_id="plant_sensors",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_PLANT): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                selector.SelectOptionDict(value=page_id, label=name)
+                                for page_id, name in plants.items()
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
+        )
+
+    async def async_step_plant_sensor_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Link sensors and thresholds for the selected plant."""
+        page_id = self._selected_page_id
+        if not page_id:
+            return await self.async_step_plant_sensors()
+
+        all_configs: dict[str, Any] = dict(
+            self._config_entry.options.get(CONF_PLANT_SENSORS) or {}
+        )
+        current: dict[str, Any] = dict(all_configs.get(page_id) or {})
+
+        if user_input is not None:
+            new_config: dict[str, Any] = {}
+            if not user_input.get(CONF_REMOVE_SENSORS):
+                for sensor_type in MONITORED_SENSOR_TYPES:
+                    entity_id = user_input.get(sensor_entity_key(sensor_type))
+                    if not entity_id:
+                        continue
+                    new_config[sensor_entity_key(sensor_type)] = entity_id
+                    for key in (sensor_min_key(sensor_type), sensor_max_key(sensor_type)):
+                        value = user_input.get(key)
+                        if value is not None and value != "":
+                            new_config[key] = float(value)
+
+            if new_config:
+                all_configs[page_id] = new_config
+            else:
+                all_configs.pop(page_id, None)
+
+            options = dict(self._config_entry.options)
+            options[CONF_PLANT_SENSORS] = all_configs
+            return self.async_create_entry(title="", data=options)
+
+        fields: dict[Any, Any] = {}
+        suggested: dict[str, Any] = {}
+        number = selector.NumberSelector(
+            selector.NumberSelectorConfig(
+                mode=selector.NumberSelectorMode.BOX, step="any"
+            )
+        )
+        for sensor_type in MONITORED_SENSOR_TYPES:
+            entity_key = sensor_entity_key(sensor_type)
+            min_key = sensor_min_key(sensor_type)
+            max_key = sensor_max_key(sensor_type)
+            fields[vol.Optional(entity_key)] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            )
+            fields[vol.Optional(min_key)] = number
+            fields[vol.Optional(max_key)] = number
+
+            default_min, default_max = DEFAULT_SENSOR_THRESHOLDS[sensor_type]
+            if current.get(entity_key):
+                suggested[entity_key] = current[entity_key]
+            if current.get(entity_key):
+                min_value = current.get(min_key)
+                max_value = current.get(max_key)
+            else:
+                min_value, max_value = default_min, default_max
+            if min_value is not None:
+                suggested[min_key] = min_value
+            if max_value is not None:
+                suggested[max_key] = max_value
+
+        if current:
+            fields[vol.Optional(CONF_REMOVE_SENSORS, default=False)] = bool
+
+        return self.async_show_form(
+            step_id="plant_sensor_config",
+            data_schema=self.add_suggested_values_to_schema(vol.Schema(fields), suggested),
+            description_placeholders={"plant": self._selected_plant_name},
         )
 
     async def _get_conversation_agents(self) -> dict[str, str]:
