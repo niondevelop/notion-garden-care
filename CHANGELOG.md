@@ -2,6 +2,27 @@
 
 All notable changes to the Notion Garden Care integration will be documented in this file.
 
+## [2.1.0] - 2026-11-09
+
+### Added
+- **German translation (Deutsch)** for the setup wizard, options, service/action descriptions and all dashboard cards.
+- **Translation files for the dashboard cards**: `frontend/i18n/<lang>.json`. The cards follow the language of the HA user profile (`de-CH` → `de` → `en` fallback). Dates are formatted in the user's locale. Notion select values (plant type, months, sun exposure, …) are translated for display only — the data in Notion stays unchanged. See `docs/TRANSLATIONS.md`.
+- **AI plant addition in your language**: if HA is not set to English, the AI writes free-text fields (care instructions, notes, …) in your language. Select values stay English so they keep matching the Notion options.
+- **Optional plant sensors** (Options → *Plant sensors*): link soil moisture, temperature, illuminance, conductivity, air humidity and battery sensors to a plant, with a healthy range per value.
+  - A linked soil moisture sensor decides when the plant needs water (`Needs Water`); if it becomes unavailable the Notion schedule is used again.
+  - Additional plant states such as `Too Wet`, `Too Hot`, `Too Dark`, `Low Nutrients`, `Sensor Battery Low`.
+  - Plant sensors get a `sensors` and `water_source` attribute; they update instantly when a linked sensor changes.
+  - New `sensor.plants_needing_attention` — only created when sensors are linked.
+  - Plant card shows sensor readings as chips (click opens the sensor) and a "by sensor" badge on the water row.
+- `mark_as_mowed` is now documented in `services.yaml`.
+- Test suite (`tests/`, pytest-homeassistant-custom-component).
+
+### Changed
+- The options dialog is now a menu: *AI agent* and *Plant sensors*. Changing options reloads the integration automatically.
+
+### Unchanged
+- Without linked sensors, entities, states and behaviour are identical to 2.0.5.
+
 ## [1.9.0] - 2026-04-03
 
 ### Fixed

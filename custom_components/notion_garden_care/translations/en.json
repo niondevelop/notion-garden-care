@@ -45,10 +45,295 @@
   "options": {
     "step": {
       "init": {
+        "title": "Notion Garden Care options",
+        "description": "What would you like to configure?",
+        "menu_options": {
+          "ai_agent": "AI agent (Add Plant)",
+          "plant_sensors": "Plant sensors (optional)"
+        }
+      },
+      "ai_agent": {
         "title": "AI Configuration",
         "description": "Select an AI conversation agent to enable the 'Add Plant' feature. The AI will automatically fill in plant care information based on your Home Assistant location.",
         "data": {
           "conversation_agent": "Conversation Agent (AI Model)"
+        }
+      },
+      "plant_sensors": {
+        "title": "Plant sensors",
+        "description": "Optionally link real sensors (e.g. soil moisture) to a plant. Plants without sensors keep working with the Notion schedule. Plants marked with 📡 already have sensors.",
+        "data": {
+          "plant": "Plant"
+        }
+      },
+      "plant_sensor_config": {
+        "title": "Sensors for {plant}",
+        "description": "Select the sensors for **{plant}** and set the healthy range. Leave a sensor empty if you don't have it. Thresholds use the unit of the selected sensor. If a soil moisture sensor with a minimum is linked, it decides when the plant needs water (instead of the schedule). \"Too dark\" is only checked while the sun is up.",
+        "data": {
+          "moisture_entity": "Soil moisture – Sensor",
+          "min_moisture": "Soil moisture – minimum",
+          "max_moisture": "Soil moisture – maximum",
+          "temperature_entity": "Temperature – Sensor",
+          "min_temperature": "Temperature – minimum",
+          "max_temperature": "Temperature – maximum",
+          "illuminance_entity": "Illuminance – Sensor",
+          "min_illuminance": "Illuminance – minimum",
+          "max_illuminance": "Illuminance – maximum",
+          "conductivity_entity": "Conductivity (fertility) – Sensor",
+          "min_conductivity": "Conductivity (fertility) – minimum",
+          "max_conductivity": "Conductivity (fertility) – maximum",
+          "humidity_entity": "Air humidity – Sensor",
+          "min_humidity": "Air humidity – minimum",
+          "max_humidity": "Air humidity – maximum",
+          "battery_entity": "Sensor battery – Sensor",
+          "min_battery": "Sensor battery – minimum",
+          "max_battery": "Sensor battery – maximum",
+          "remove_sensors": "Remove all sensors from this plant"
+        }
+      }
+    },
+    "abort": {
+      "no_plants": "No plants loaded yet. Make sure the integration is set up and the Notion database contains plants."
+    }
+  },
+  "services": {
+    "mark_as_watered": {
+      "name": "Mark Plant as Watered",
+      "description": "Updates the \"Last Watered\" date in Notion for a plant or all plants in a HA area",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the plant sensor"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the plant (alternative to selecting entity)"
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Update all plants in this HA area (alternative to selecting a single plant)"
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date to set (defaults to today if not specified)"
+        }
+      }
+    },
+    "mark_as_fertilized": {
+      "name": "Mark Plant as Fertilized",
+      "description": "Updates the \"Last Fertilized\" date in Notion for a plant or all plants in a HA area",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the plant sensor"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the plant (alternative to selecting entity)"
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Update all plants in this HA area (alternative to selecting a single plant)"
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date to set (defaults to today if not specified)"
+        }
+      }
+    },
+    "mark_as_pruned": {
+      "name": "Mark Plant as Pruned",
+      "description": "Updates the \"Last Pruned\" date in Notion for a plant or all plants in a HA area",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the plant sensor"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the plant (alternative to selecting entity)"
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Update all plants in this HA area (alternative to selecting a single plant)"
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date to set (defaults to today if not specified)"
+        }
+      }
+    },
+    "mark_as_aerated": {
+      "name": "Mark Lawn as Aerated",
+      "description": "Updates the \"Last Aeration\" date in Notion for a lawn or all plants in a HA area",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the lawn/plant sensor"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the lawn (alternative to selecting entity)"
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Update all plants in this HA area (alternative to selecting a single plant)"
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date to set (defaults to today if not specified)"
+        }
+      }
+    },
+    "mark_as_harvested": {
+      "name": "Mark Plant as Harvested",
+      "description": "Updates the \"Last Harvested\" date in Notion for a plant or all plants in a HA area",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the plant sensor"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the plant (alternative to selecting entity)"
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Update all plants in this HA area (alternative to selecting a single plant)"
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date to set (defaults to today if not specified)"
+        }
+      }
+    },
+    "mark_as_sanded": {
+      "name": "Mark Lawn as Sanded",
+      "description": "Updates the \"Last Sanded\" date in Notion for a lawn or all plants in a HA area",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the lawn sensor"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the lawn (alternative to selecting entity)"
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Update all plants in this HA area (alternative to selecting a single plant)"
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date to set (defaults to today if not specified)"
+        }
+      }
+    },
+    "update_plant_property": {
+      "name": "Update Plant Property",
+      "description": "Updates any property in Notion for a plant. Supports text, number, checkbox, date, and multi-select values.",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the plant sensor"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the plant (alternative to selecting entity)"
+        },
+        "property_name": {
+          "name": "Property Name",
+          "description": "Select the Notion property to update"
+        },
+        "property_value": {
+          "name": "Property Value",
+          "description": "The value to set. Type is auto-detected: number for integers/floats, true/false for checkbox, YYYY-MM-DD for dates, list for multi-select, otherwise text"
+        }
+      }
+    },
+    "refresh_database": {
+      "name": "Refresh Database",
+      "description": "Manually refresh the Notion Garden Care database data"
+    },
+    "add_plant": {
+      "name": "Add Plant (AI)",
+      "description": "Add a new plant using AI to automatically fill in care information. Requires a conversation agent to be configured in the integration options.",
+      "fields": {
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the plant to add (e.g., \"Lavender\", \"Strawberry\", \"Mint\")"
+        }
+      }
+    },
+    "delete_plant": {
+      "name": "Delete Plant",
+      "description": "Permanently removes a plant from the Notion database (moves the page to trash) and deletes the corresponding sensor.",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the plant sensor to delete"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the plant (alternative to selecting entity)"
+        }
+      }
+    },
+    "mark_as_mowed": {
+      "name": "Mark Lawn as Mowed",
+      "description": "Updates the \"Last Mowed\" date in Notion for a lawn or all plants in a HA area",
+      "fields": {
+        "entity_id": {
+          "name": "Plant",
+          "description": "Select the lawn sensor"
+        },
+        "page_id": {
+          "name": "Page ID",
+          "description": "The Notion page ID (alternative to selecting entity)"
+        },
+        "plant_name": {
+          "name": "Plant Name",
+          "description": "The name of the lawn (alternative to selecting entity)"
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Update all plants in this HA area (alternative to selecting a single plant)"
+        },
+        "date": {
+          "name": "Date",
+          "description": "Date to set (defaults to today if not specified)"
         }
       }
     }

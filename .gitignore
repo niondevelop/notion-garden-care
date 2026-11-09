@@ -36,4 +36,4 @@ homeassistant/
 
 # Test scripts
 debug_sensors.py
-test_*.py
+/test_*.py

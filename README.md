@@ -1,5 +1,7 @@
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/pfalzcraft)
 
+🇩🇪 [Deutsche Kurzanleitung](README.de.md)
+
 # 🌱 Notion Garden Care for Home Assistant
 
 Manage your garden with Notion and automate reminders with Home Assistant. Track watering, fertilizing, and pruning schedules for all your plants in one place.
@@ -24,6 +26,8 @@ Manage your garden with Notion and automate reminders with Home Assistant. Track
 - 🔄 **Bidirectional Sync** - Update Notion from Home Assistant and vice versa
 - 🪴 **Example Plants** - Pre-configured templates to get started
 - 📱 **Mobile Friendly** - Works on all Home Assistant apps
+- 🌍 **Multilingual** - English and German (Deutsch) out of the box; follows your HA profile language. New languages = one JSON file each (see [docs/TRANSLATIONS.md](docs/TRANSLATIONS.md))
+- 📡 **Optional Plant Sensors** - Link real sensors (soil moisture, temperature, light, fertility, humidity, battery) to a plant. Without sensors everything works exactly as before (see [docs/SENSOR_MONITORING.md](docs/SENSOR_MONITORING.md))
 
 ### Extended Plant Information
 
@@ -140,6 +144,16 @@ After setup, assign each plant sensor to a Home Assistant area to enable area gr
 
 > **Tip:** Set an area picture in **Settings** → **Areas** — it becomes the background image of that area's section header card.
 
+### Step 7: Link Plant Sensors (Optional)
+
+Have a soil moisture sensor (Xiaomi MiFlora, ESPHome capacitive sensor, Zigbee soil sensor, …)?
+
+1. **Settings** → **Devices & Services** → **Notion Garden Care** → **Configure**
+2. Choose **Plant sensors (optional)** → select a plant
+3. Pick the sensors you have and adjust the healthy range → **Submit**
+
+A linked soil moisture sensor then decides when the plant needs water (instead of the fixed interval), and the plant card shows live readings. Details: [docs/SENSOR_MONITORING.md](docs/SENSOR_MONITORING.md).
+
 ## 📊 What You Get
 
 ### Sensors
@@ -154,7 +168,10 @@ After setup, assign each plant sensor to a Home Assistant area to enable area gr
 **Individual Plant Sensors (one per plant):**
 - `sensor.garden_care_tomatoes` — shows status, all care dates, and attributes
 
-Each plant sensor state is one of: `"OK"`, `"Needs Water"`, `"Needs Fertilizer"`, `"Needs Pruning"`.
+Each plant sensor state is one of: `"OK"`, `"Needs Water"`, `"Needs Fertilizer"`, `"Needs Pruning"` (comma-separated if several apply). Plants with linked sensors can additionally report `"Too Wet"`, `"Too Cold"`, `"Too Hot"`, `"Too Dark"`, `"Too Bright"`, `"Low Nutrients"`, `"Too Much Fertilizer"`, `"Air Too Dry"`, `"Air Too Humid"` or `"Sensor Battery Low"`.
+
+**Only when at least one plant has linked sensors:**
+- `sensor.plants_needing_attention` - Plants with an out-of-range sensor reading
 
 #### Sensor Logic
 
@@ -454,6 +471,8 @@ MIT License — see [LICENSE](LICENSE) for details.
 If you find this integration helpful, consider supporting the development:
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/pfalzcraft)
+
+🇩🇪 [Deutsche Kurzanleitung](README.de.md)
 
 ---
 

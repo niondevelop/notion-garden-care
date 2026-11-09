@@ -11,7 +11,15 @@
  *   - Groups them by HA area; renders a responsive grid (one column per area).
  *   - Rebuilds layout only when the set of entities or area assignments change.
  *   - Just propagates hass on normal state updates — zero re-renders for live data.
+ *
+ * Texts are translated via ./i18n/<lang>.json (see garden-care-i18n.js).
  */
+
+const { t, esc, resolveLanguage, ensureLanguage } =
+  await import(`./garden-care-i18n.js${new URL(import.meta.url).search}`);
+
+const _initialLang = resolveLanguage(null);
+await ensureLanguage(_initialLang);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GardenAreaCard
@@ -22,22 +30,31 @@ class GardenAreaCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    const lang = resolveLanguage(hass);
+    if (lang !== this._lang) {
+      this._lang = lang;
+      ensureLanguage(lang).then(() => {
+        if (this._lang === lang) { this._render(); this._rendered = true; }
+      });
+      return;
+    }
     if (!this._rendered) { this._render(); this._rendered = true; }
   }
 
   _render() {
-    const areaName  = this._config.area    || 'Area';
+    const lang = this._lang || _initialLang;
+    const areaName  = esc(this._config.area || t(lang, 'area.default_name'));
     const areaId    = this._config.area_id;
     const picture   = this._config.picture || null;   // HA area picture URL
 
     const actions = [
-      { label: '💧 Water All',     service: 'mark_as_watered'    },
-      { label: '🌿 Fertilize All', service: 'mark_as_fertilized' },
-      { label: '✂️ Prune All',     service: 'mark_as_pruned'     },
-      { label: '🍅 Harvest All',   service: 'mark_as_harvested'  },
+      { label: `💧 ${t(lang, 'area.water_all')}`,     service: 'mark_as_watered'    },
+      { label: `🌿 ${t(lang, 'area.fertilize_all')}`, service: 'mark_as_fertilized' },
+      { label: `✂️ ${t(lang, 'area.prune_all')}`,     service: 'mark_as_pruned'     },
+      { label: `🍅 ${t(lang, 'area.harvest_all')}`,   service: 'mark_as_harvested'  },
     ];
 
-    this.attachShadow({ mode: 'open' });
+    if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
@@ -147,7 +164,7 @@ class GardenCareRootCard extends HTMLElement {
   /** Changes when entity list or their area assignments change. */
   _getLayoutKey(hass) {
     const SKIP = ['plants_to_', 'active_plants', '_database'];
-    return Object.entries(hass.states || {})
+    return resolveLanguage(hass) + '#' + Object.entries(hass.states || {})
       .filter(([id, s]) =>
         id.startsWith('sensor.') &&
         s.attributes?.page_id &&
@@ -240,7 +257,7 @@ class GardenCareRootCard extends HTMLElement {
     if (plants.length === 0) {
       const msg = document.createElement('p');
       msg.className = 'empty-msg';
-      msg.textContent = 'No plants found. Use the Add Plant form above to get started.';
+      msg.textContent = t(resolveLanguage(hass), 'area.no_plants');
       grid.appendChild(msg);
       return;
     }
@@ -321,8 +338,8 @@ window.customCards = window.customCards || [];
 if (!window.customCards.find(c => c.type === 'garden-care-root-card')) {
   window.customCards.push({
     type: 'garden-care-root-card',
-    name: 'Garden Care Dashboard',
-    description: 'Auto-discovering garden care dashboard — plants grouped by HA area in a responsive grid',
+    name: t(_initialLang, 'picker.root_card_name'),
+    description: t(_initialLang, 'picker.root_card_desc'),
     preview: false,
     documentationURL: 'https://github.com/pfalzcraft/notion-garden-care',
   });

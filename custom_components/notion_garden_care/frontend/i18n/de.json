@@ -1,0 +1,221 @@
+{
+  "card": {
+    "water": "Gießen",
+    "fertilize": "Düngen",
+    "prune": "Schneiden",
+    "harvest": "Ernten",
+    "aeration": "Belüften",
+    "sanding": "Sanden",
+    "mowed": "Gemäht",
+    "next": "Nächstes: {value}",
+    "last": "Zuletzt: {value}",
+    "overdue": "{days} T. überfällig",
+    "today": "heute!",
+    "tomorrow": "morgen",
+    "in_days": "in {days} T.",
+    "show_attributes": "Alle Eigenschaften anzeigen",
+    "details": "{name} – Details",
+    "entity_not_found": "Entität nicht gefunden: {entity}",
+    "define_entity": "Bitte eine Entität angeben",
+    "by_sensor": "per Sensor",
+    "sensors_title": "Sensoren"
+  },
+  "actions": {
+    "watered": "Gegossen",
+    "fertilized": "Gedüngt",
+    "pruned": "Geschnitten",
+    "harvested": "Geerntet",
+    "aerated": "Belüftet",
+    "sanded": "Gesandet",
+    "mowed": "Gemäht",
+    "delete": "Löschen",
+    "delete_title": "Diese Pflanze aus Notion löschen",
+    "delete_confirm": "„{name}“ löschen?",
+    "delete_yes": "Ja, löschen",
+    "cancel": "Abbrechen",
+    "saving": "Speichern...",
+    "done": "Erledigt!",
+    "error": "Fehler",
+    "deleting": "Wird gelöscht...",
+    "deleted": "Gelöscht!"
+  },
+  "editor": {
+    "plant_entity": "Pflanzen-Entität",
+    "select_plant": "Pflanze auswählen...",
+    "hint": "Wähle eine Pflanze aus deiner Notion-Gartenpflege-Datenbank",
+    "add_plant_note": "Diese Karte bietet ein Formular, um neue Pflanzen mit KI hinzuzufügen. Keine Konfiguration nötig."
+  },
+  "add_plant": {
+    "title": "Neue Pflanze hinzufügen",
+    "placeholder": "Pflanzenname eingeben (z. B. Lavendel, Tomate, Eiche)",
+    "button": "Hinzufügen",
+    "adding": "Wird hinzugefügt...",
+    "hint": "Die KI ergänzt Pflegehinweise, Gießplan und mehr automatisch.",
+    "enter_name": "Bitte einen Pflanzennamen eingeben",
+    "exists": "„{name}“ ist bereits in deinem Garten",
+    "added": "„{name}“ hinzugefügt! Das Dashboard aktualisiert sich gleich.",
+    "failed": "Pflanze konnte nicht hinzugefügt werden: {error}"
+  },
+  "area": {
+    "default_name": "Bereich",
+    "water_all": "Alle gießen",
+    "fertilize_all": "Alle düngen",
+    "prune_all": "Alle schneiden",
+    "harvest_all": "Alle ernten",
+    "no_plants": "Keine Pflanzen gefunden. Füge oben über das Formular deine erste Pflanze hinzu."
+  },
+  "picker": {
+    "plant_card_name": "Pflanzenpflege-Karte",
+    "plant_card_desc": "Zeigt Pflegeinformationen aus Notion Garden Care an",
+    "add_card_name": "Pflanze-hinzufügen-Karte",
+    "add_card_desc": "Formular zum Hinzufügen neuer Pflanzen mit KI-Pflegeinfos",
+    "root_card_name": "Gartenpflege-Dashboard",
+    "root_card_desc": "Erkennt Pflanzen automatisch – gruppiert nach HA-Bereich in einem responsiven Raster"
+  },
+  "sensors": {
+    "moisture": "Bodenfeuchte",
+    "temperature": "Temperatur",
+    "illuminance": "Licht",
+    "conductivity": "Nährstoffe",
+    "humidity": "Luftfeuchte",
+    "battery": "Batterie"
+  },
+  "sensor_status": {
+    "ok": "OK",
+    "low": "zu niedrig",
+    "high": "zu hoch",
+    "unavailable": "nicht verfügbar",
+    "moisture": {
+      "low": "zu trocken",
+      "high": "zu nass"
+    },
+    "temperature": {
+      "low": "zu kalt",
+      "high": "zu heiß"
+    },
+    "illuminance": {
+      "low": "zu dunkel",
+      "high": "zu hell"
+    },
+    "conductivity": {
+      "low": "zu wenig Nährstoffe",
+      "high": "überdüngt"
+    },
+    "humidity": {
+      "low": "Luft zu trocken",
+      "high": "Luft zu feucht"
+    },
+    "battery": {
+      "low": "Batterie schwach"
+    }
+  },
+  "attributes": {
+    "page_id": "Seiten-ID",
+    "plant_name": "Pflanzenname",
+    "name": "Name",
+    "type": "Typ",
+    "active": "Aktiv",
+    "lifecycle": "Lebenszyklus",
+    "plant_date": "Pflanzdatum",
+    "height": "Höhe",
+    "growth_per_year": "Zuwachs pro Jahr",
+    "hardiness_zone": "Winterhärtezone",
+    "sun_exposure": "Standort (Licht)",
+    "soil_type": "Bodenart",
+    "soil_ph": "Boden-pH",
+    "water_interval_days": "Gießintervall (Tage)",
+    "last_watered": "Zuletzt gegossen",
+    "next_water": "Nächstes Gießen",
+    "water_amount": "Wassermenge",
+    "fertilize_interval_days": "Düngeintervall (Tage)",
+    "last_fertilized": "Zuletzt gedüngt",
+    "next_fertilize": "Nächstes Düngen",
+    "fertilizer_type": "Dünger",
+    "prune_months": "Schnittmonate",
+    "last_pruned": "Zuletzt geschnitten",
+    "prune_instructions": "Schnitthinweise",
+    "harvest_months": "Erntemonate",
+    "last_harvested": "Zuletzt geerntet",
+    "harvest_notes": "Erntehinweise",
+    "aeration_interval_days": "Belüftungsintervall (Tage)",
+    "last_aeration": "Zuletzt belüftet",
+    "next_aeration": "Nächstes Belüften",
+    "sanding_interval_days": "Sandintervall (Tage)",
+    "last_sanded": "Zuletzt gesandet",
+    "next_sanding": "Nächstes Sanden",
+    "last_mowed": "Zuletzt gemäht",
+    "companion_plants": "Gute Nachbarn",
+    "bad_companions": "Schlechte Nachbarn",
+    "bee_friendly": "Bienenfreundlich",
+    "toxicity": "Giftigkeit",
+    "winterize": "Winterschutz",
+    "care_instructions": "Pflegehinweise",
+    "special_notes": "Besonderheiten",
+    "notes": "Notizen",
+    "additional_information": "Weitere Informationen"
+  },
+  "values": {
+    "yes": "Ja",
+    "no": "Nein",
+    "type": {
+      "Plant": "Pflanze",
+      "Tree": "Baum",
+      "Shrub": "Strauch",
+      "Vegetable": "Gemüse",
+      "Herb": "Kraut",
+      "Lawn": "Rasen",
+      "Flower": "Blume"
+    },
+    "lifecycle": {
+      "Perennial": "Mehrjährig",
+      "Annual": "Einjährig",
+      "Biennial": "Zweijährig"
+    },
+    "sun_exposure": {
+      "Full Sun": "Sonnig",
+      "Partial Sun": "Halbsonnig",
+      "Partial Shade": "Halbschattig",
+      "Full Shade": "Schattig"
+    },
+    "water_amount": {
+      "Low": "Wenig",
+      "Medium": "Mittel",
+      "High": "Viel"
+    },
+    "soil_type": {
+      "Sandy": "Sandig",
+      "Loamy": "Lehmig",
+      "Clay": "Tonig",
+      "Silty": "Schluffig",
+      "Peaty": "Torfig",
+      "Chalky": "Kalkhaltig",
+      "Any": "Beliebig"
+    },
+    "soil_ph": {
+      "Acidic (pH < 6)": "Sauer (pH < 6)",
+      "Neutral (pH 6-7)": "Neutral (pH 6–7)",
+      "Alkaline (pH > 7)": "Alkalisch (pH > 7)",
+      "Any": "Beliebig"
+    },
+    "toxicity": {
+      "Safe": "Ungiftig",
+      "Toxic to Pets": "Giftig für Haustiere",
+      "Toxic to Children": "Giftig für Kinder",
+      "Toxic to Both": "Giftig für Haustiere und Kinder"
+    },
+    "month": {
+      "January": "Januar",
+      "February": "Februar",
+      "March": "März",
+      "April": "April",
+      "May": "Mai",
+      "June": "Juni",
+      "July": "Juli",
+      "August": "August",
+      "September": "September",
+      "October": "Oktober",
+      "November": "November",
+      "December": "Dezember"
+    }
+  }
+}

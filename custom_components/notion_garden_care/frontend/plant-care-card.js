@@ -2,7 +2,31 @@
  * Plant Care Card - Custom Lovelace Card for Notion Garden Care
  *
  * Displays individual plant information with care schedule and action buttons.
+ * Texts are translated via ./i18n/<lang>.json (see garden-care-i18n.js).
  */
+
+const {
+  t, tv, esc, resolveLanguage, resolveLocale, ensureLanguage,
+} = await import(`./garden-care-i18n.js${new URL(import.meta.url).search}`);
+
+const _initialLang = resolveLanguage(null);
+await ensureLanguage(_initialLang);
+
+const SENSOR_ICONS = {
+  moisture: 'mdi:water-percent',
+  temperature: 'mdi:thermometer',
+  illuminance: 'mdi:white-balance-sunny',
+  conductivity: 'mdi:flower-pollen',
+  humidity: 'mdi:water',
+  battery: 'mdi:battery',
+};
+
+// Attribute key → translation group for Notion select values
+const VALUE_GROUPS = {
+  type: 'type', lifecycle: 'lifecycle', sun_exposure: 'sun_exposure',
+  water_amount: 'water_amount', soil_type: 'soil_type', soil_ph: 'soil_ph',
+  toxicity: 'toxicity', prune_months: 'month', harvest_months: 'month',
+};
 
 class PlantCareCard extends HTMLElement {
   constructor() {
@@ -14,6 +38,19 @@ class PlantCareCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    const lang = resolveLanguage(hass);
+    if (lang !== this._lang) {
+      this._lang = lang;
+      this._locale = resolveLocale(hass);
+      this._initialized = false;
+      ensureLanguage(lang).then(() => {
+        if (this._lang === lang && this._hass) {
+          this.render();
+          this._initialized = true;
+        }
+      });
+      return;
+    }
     if (!this._initialized) {
       this.render();
       this._initialized = true;
@@ -22,9 +59,13 @@ class PlantCareCard extends HTMLElement {
     }
   }
 
+  _t(key, params) {
+    return t(this._lang || _initialLang, key, params);
+  }
+
   setConfig(config) {
     if (!config.entity) {
-      throw new Error('Please define an entity');
+      throw new Error(t(this._lang || _initialLang, 'card.define_entity'));
     }
     this._config = config;
     this._initialized = false;
@@ -85,22 +126,21 @@ class PlantCareCard extends HTMLElement {
     if (!dateStr) return { text: '-', class: 'neutral' };
 
     const days = this.getDaysDiff(dateStr);
-    const date = new Date(dateStr);
-    const dateFormatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dateFormatted = this.formatLastDate(dateStr);
 
     if (days < 0) {
       return {
-        text: `${dateFormatted} (${Math.abs(days)}d overdue)`,
+        text: `${dateFormatted} (${this._t('card.overdue', { days: Math.abs(days) })})`,
         class: 'overdue'
       };
     } else if (days === 0) {
-      return { text: `${dateFormatted} (today!)`, class: 'due-today' };
+      return { text: `${dateFormatted} (${this._t('card.today')})`, class: 'due-today' };
     } else if (days === 1) {
-      return { text: `${dateFormatted} (tomorrow)`, class: 'due-soon' };
+      return { text: `${dateFormatted} (${this._t('card.tomorrow')})`, class: 'due-soon' };
     } else if (days <= 3) {
-      return { text: `${dateFormatted} (${days}d)`, class: 'due-soon' };
+      return { text: `${dateFormatted} (${this._t('card.in_days', { days })})`, class: 'due-soon' };
     } else {
-      return { text: `${dateFormatted} (${days}d)`, class: 'neutral' };
+      return { text: `${dateFormatted} (${this._t('card.in_days', { days })})`, class: 'neutral' };
     }
   }
 
@@ -120,13 +160,15 @@ class PlantCareCard extends HTMLElement {
       const monthLower = month.toLowerCase();
       const currentLower = currentMonth.toLowerCase();
       const shortLower = shortCurrentMonth.toLowerCase();
+      // Month names are stored in English in Notion; display them translated
+      const label = esc(tv(this._lang, 'month', month));
 
       if (monthLower === currentLower || monthLower === shortLower ||
           currentLower.startsWith(monthLower) || monthLower.startsWith(shortLower)) {
         hasCurrentMonth = true;
-        return `<span class="current-month">${month}</span>`;
+        return `<span class="current-month">${label}</span>`;
       }
-      return month;
+      return label;
     });
 
     return { html: formatted.join(', '), hasCurrentMonth };
@@ -140,13 +182,13 @@ class PlantCareCard extends HTMLElement {
     if (button) {
       const originalText = button.innerHTML;
       button.disabled = true;
-      button.innerHTML = '⏳ Saving...';
+      button.innerHTML = `⏳ ${this._t('actions.saving')}`;
 
       try {
         await this._hass.callService('notion_garden_care', service, {
           entity_id: entityId
         });
-        button.innerHTML = '✓ Done!';
+        button.innerHTML = `✓ ${this._t('actions.done')}`;
         button.classList.add('success');
         setTimeout(() => {
           button.innerHTML = originalText;
@@ -154,7 +196,7 @@ class PlantCareCard extends HTMLElement {
           button.classList.remove('success');
         }, 2000);
       } catch (err) {
-        button.innerHTML = '✗ Error';
+        button.innerHTML = `✗ ${this._t('actions.error')}`;
         button.classList.add('error');
         setTimeout(() => {
           button.innerHTML = originalText;
@@ -171,7 +213,11 @@ class PlantCareCard extends HTMLElement {
   formatLastDate(dateStr) {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    try {
+      return date.toLocaleDateString(this._locale || 'en-US', { month: 'short', day: 'numeric' });
+    } catch (e) {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
   }
 
   /**
@@ -180,17 +226,17 @@ class PlantCareCard extends HTMLElement {
   async deletePlant(entityId) {
     const yesBtn = this.shadowRoot.getElementById('confirm-yes');
     const noBtn = this.shadowRoot.getElementById('confirm-no');
-    if (yesBtn) { yesBtn.disabled = true; yesBtn.textContent = '⏳ Deleting...'; }
+    if (yesBtn) { yesBtn.disabled = true; yesBtn.textContent = `⏳ ${this._t('actions.deleting')}`; }
     if (noBtn) noBtn.disabled = true;
 
     try {
       await this._hass.callService('notion_garden_care', 'delete_plant', {
         entity_id: entityId
       });
-      if (yesBtn) yesBtn.textContent = '✓ Deleted!';
+      if (yesBtn) yesBtn.textContent = `✓ ${this._t('actions.deleted')}`;
     } catch (err) {
       console.error('Failed to delete plant:', err);
-      if (yesBtn) { yesBtn.disabled = false; yesBtn.textContent = 'Yes, delete'; }
+      if (yesBtn) { yesBtn.disabled = false; yesBtn.textContent = this._t('actions.delete_yes'); }
       if (noBtn) noBtn.disabled = false;
       const deleteBtn = this.shadowRoot.getElementById('btn-delete');
       if (deleteBtn) deleteBtn.style.display = '';
@@ -202,27 +248,84 @@ class PlantCareCard extends HTMLElement {
    * Format all attributes as table rows
    */
   formatAttributes(attrs) {
-    const skipKeys = ['friendly_name', 'icon'];
+    const skipKeys = ['friendly_name', 'icon', 'sensors', 'water_source'];
     const rows = [];
 
     for (const [key, value] of Object.entries(attrs)) {
       if (skipKeys.includes(key)) continue;
 
-      const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const attrKey = `attributes.${key}`;
+      const translated = this._t(attrKey);
+      const label = translated !== attrKey
+        ? translated
+        : key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const group = VALUE_GROUPS[key];
       let displayValue = value;
 
       if (Array.isArray(value)) {
-        displayValue = value.join(', ');
+        displayValue = value.map(v => (group ? tv(this._lang, group, v) : v)).join(', ');
       } else if (typeof value === 'boolean') {
-        displayValue = value ? 'Yes' : 'No';
+        displayValue = value ? this._t('values.yes') : this._t('values.no');
       } else if (value === null || value === undefined) {
         displayValue = '-';
+      } else if (typeof value === 'object') {
+        displayValue = JSON.stringify(value);
+      } else if (group) {
+        displayValue = tv(this._lang, group, value);
       }
 
-      rows.push(`<tr><td>${label}</td><td>${displayValue}</td></tr>`);
+      rows.push(`<tr><td>${esc(label)}</td><td>${esc(displayValue)}</td></tr>`);
     }
 
     return rows.join('');
+  }
+
+  /**
+   * Render linked sensor readings (empty string if no sensors are linked)
+   */
+  formatSensors(attrs) {
+    const sensors = attrs.sensors;
+    if (!sensors || typeof sensors !== 'object' || Object.keys(sensors).length === 0) {
+      return '';
+    }
+    const chips = Object.entries(sensors).map(([type, r]) => {
+      const status = r?.status || 'unavailable';
+      const specificKey = `sensor_status.${type}.${status}`;
+      const statusText = this._t(specificKey) !== specificKey
+        ? this._t(specificKey)
+        : this._t(`sensor_status.${status}`);
+      let valueText = '–';
+      if (r && r.value !== null && r.value !== undefined) {
+        const num = Number(r.value);
+        const rounded = Number.isFinite(num)
+          ? num.toLocaleString(this._locale || 'en-US', { maximumFractionDigits: 1 })
+          : r.value;
+        valueText = `${rounded}${r.unit ? ' ' + r.unit : ''}`;
+      }
+      const title = `${this._t(`sensors.${type}`)}: ${statusText}` +
+        (r?.entity_id ? ` (${r.entity_id})` : '');
+      return `
+        <div class="sensor-chip ${esc(status)}" data-entity="${esc(r?.entity_id || '')}" title="${esc(title)}">
+          <ha-icon icon="${SENSOR_ICONS[type] || 'mdi:gauge'}"></ha-icon>
+          <span class="sensor-label">${esc(this._t(`sensors.${type}`))}</span>
+          <span class="sensor-value">${esc(valueText)}</span>
+          ${status !== 'ok' ? `<span class="sensor-status">${esc(statusText)}</span>` : ''}
+        </div>`;
+    });
+    return `<div class="sensor-grid">${chips.join('')}</div>`;
+  }
+
+  _bindSensorChips() {
+    this.shadowRoot.querySelectorAll('.sensor-chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const entityId = chip.dataset.entity;
+        if (!entityId) return;
+        this.dispatchEvent(new CustomEvent('hass-more-info', {
+          bubbles: true, composed: true, detail: { entityId },
+        }));
+      });
+    });
   }
 
   /**
@@ -265,11 +368,11 @@ class PlantCareCard extends HTMLElement {
     const harvestEl = this.shadowRoot.getElementById('harvest-value');
 
     if (waterEl) {
-      waterEl.textContent = `Next: ${nextWater.text}`;
+      waterEl.textContent = this._t('card.next', { value: nextWater.text });
       waterEl.className = `care-next care-value ${nextWater.class}`;
     }
     if (fertilizeEl) {
-      fertilizeEl.textContent = `Next: ${nextFertilize.text}`;
+      fertilizeEl.textContent = this._t('card.next', { value: nextFertilize.text });
       fertilizeEl.className = `care-next care-value ${nextFertilize.class}`;
     }
     if (pruneEl) {
@@ -287,10 +390,10 @@ class PlantCareCard extends HTMLElement {
     const pruneLastEl = this.shadowRoot.getElementById('prune-last');
     const harvestLastEl = this.shadowRoot.getElementById('harvest-last');
 
-    if (waterLastEl) waterLastEl.textContent = `Last: ${lastWater}`;
-    if (fertilizeLastEl) fertilizeLastEl.textContent = `Last: ${lastFertilize}`;
-    if (pruneLastEl) pruneLastEl.textContent = `Last: ${lastPruned}`;
-    if (harvestLastEl) harvestLastEl.textContent = `Last: ${lastHarvested}`;
+    if (waterLastEl) waterLastEl.textContent = this._t('card.last', { value: lastWater });
+    if (fertilizeLastEl) fertilizeLastEl.textContent = this._t('card.last', { value: lastFertilize });
+    if (pruneLastEl) pruneLastEl.textContent = this._t('card.last', { value: lastPruned });
+    if (harvestLastEl) harvestLastEl.textContent = this._t('card.last', { value: lastHarvested });
 
     // Update lawn-specific fields if present
     if (isLawn) {
@@ -307,17 +410,26 @@ class PlantCareCard extends HTMLElement {
       const mowedLastEl = this.shadowRoot.getElementById('mowed-last');
 
       if (aerationEl) {
-        aerationEl.textContent = `Next: ${nextAeration.text}`;
+        aerationEl.textContent = this._t('card.next', { value: nextAeration.text });
         aerationEl.className = `care-next care-value ${nextAeration.class}`;
       }
       if (sandingEl) {
-        sandingEl.textContent = `Next: ${nextSanding.text}`;
+        sandingEl.textContent = this._t('card.next', { value: nextSanding.text });
         sandingEl.className = `care-next care-value ${nextSanding.class}`;
       }
-      if (aerationLastEl) aerationLastEl.textContent = `Last: ${lastAeration}`;
-      if (sandingLastEl) sandingLastEl.textContent = `Last: ${lastSanding}`;
-      if (mowedLastEl) mowedLastEl.textContent = `Last: ${lastMowed}`;
+      if (aerationLastEl) aerationLastEl.textContent = this._t('card.last', { value: lastAeration });
+      if (sandingLastEl) sandingLastEl.textContent = this._t('card.last', { value: lastSanding });
+      if (mowedLastEl) mowedLastEl.textContent = this._t('card.last', { value: lastMowed });
     }
+
+    // Update sensor readings + water source badge
+    const sensorSection = this.shadowRoot.getElementById('sensor-section');
+    if (sensorSection) {
+      sensorSection.innerHTML = this.formatSensors(attrs);
+      this._bindSensorChips();
+    }
+    const waterBadge = this.shadowRoot.getElementById('water-source');
+    if (waterBadge) waterBadge.style.display = attrs.water_source === 'sensor' ? '' : 'none';
 
     // Update popup table content
     const popupTable = this.shadowRoot.querySelector('.popup-table');
@@ -336,7 +448,7 @@ class PlantCareCard extends HTMLElement {
       this.shadowRoot.innerHTML = `
         <ha-card>
           <div class="card-content" style="padding: 16px;">
-            <p>Entity not found: ${entityId}</p>
+            <p>${esc(this._t('card.entity_not_found', { entity: entityId }))}</p>
           </div>
         </ha-card>
       `;
@@ -344,7 +456,7 @@ class PlantCareCard extends HTMLElement {
     }
 
     const attrs = state.attributes;
-    const plantName = attrs.plant_name || attrs.name || state.entity_id;
+    const plantName = esc(attrs.plant_name || attrs.name || state.entity_id);
     const plantType = attrs.type || 'Plant';
     const areaId   = this._hass.entities?.[entityId]?.area_id ?? null;
     const areaName = areaId ? (this._hass.areas?.[areaId]?.name ?? null) : null;
@@ -573,6 +685,45 @@ class PlantCareCard extends HTMLElement {
         .info-icon:hover {
           color: var(--primary-color);
         }
+        .source-badge {
+          display: block;
+          width: fit-content;
+          white-space: nowrap;
+          margin-top: 2px;
+          padding: 1px 6px;
+          border-radius: 8px;
+          font-size: 0.75em;
+          font-weight: normal;
+          background: var(--secondary-background-color, #f0f0f0);
+          color: var(--secondary-text-color);
+        }
+        .sensor-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin: 4px 0 12px;
+        }
+        .sensor-chip {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 0.85em;
+          cursor: pointer;
+          background: var(--secondary-background-color, #f0f0f0);
+          border: 1px solid transparent;
+        }
+        .sensor-chip ha-icon { --mdc-icon-size: 16px; color: var(--primary-color); }
+        .sensor-chip .sensor-label { color: var(--secondary-text-color); }
+        .sensor-chip .sensor-value { font-weight: 500; }
+        .sensor-chip .sensor-status { font-size: 0.85em; }
+        .sensor-chip.low, .sensor-chip.high {
+          border-color: var(--error-color, #db4437);
+          color: var(--error-color, #db4437);
+        }
+        .sensor-chip.low ha-icon, .sensor-chip.high ha-icon { color: var(--error-color, #db4437); }
+        .sensor-chip.unavailable { opacity: 0.6; }
         .popup-overlay {
           display: none;
           position: fixed;
@@ -649,111 +800,113 @@ class PlantCareCard extends HTMLElement {
             <ha-icon class="plant-icon" icon="${this.getPlantIcon(plantType)}"></ha-icon>
             <div class="plant-title">
               <span class="plant-name" id="plant-name-link">${plantName}</span>
-              <span class="plant-area" id="plant-area" style="${areaName ? '' : 'display:none'}">${areaName || ''}</span>
+              <span class="plant-area" id="plant-area" style="${areaName ? '' : 'display:none'}">${esc(areaName || '')}</span>
             </div>
           </div>
-          <ha-icon class="info-icon" icon="mdi:information-outline" id="info-toggle" title="Show all attributes"></ha-icon>
+          <ha-icon class="info-icon" icon="mdi:information-outline" id="info-toggle" title="${esc(this._t('card.show_attributes'))}"></ha-icon>
         </div>
 
         <div class="care-schedule">
           <div class="care-row">
             <span class="care-icon">💧</span>
-            <span class="care-label">Water</span>
+            <span class="care-label">${this._t('card.water')}<span class="source-badge" id="water-source" style="${attrs.water_source === 'sensor' ? '' : 'display:none'}">📡 ${this._t('card.by_sensor')}</span></span>
             <div class="care-dates">
-              <span class="care-next care-value ${nextWater.class}" id="water-value">Next: ${nextWater.text}</span>
-              <span class="care-last" id="water-last">Last: ${lastWater}</span>
+              <span class="care-next care-value ${nextWater.class}" id="water-value">${this._t('card.next', { value: nextWater.text })}</span>
+              <span class="care-last" id="water-last">${this._t('card.last', { value: lastWater })}</span>
             </div>
           </div>
           <div class="care-row">
             <span class="care-icon">🧪</span>
-            <span class="care-label">Fertilize</span>
+            <span class="care-label">${this._t('card.fertilize')}</span>
             <div class="care-dates">
-              <span class="care-next care-value ${nextFertilize.class}" id="fertilize-value">Next: ${nextFertilize.text}</span>
-              <span class="care-last" id="fertilize-last">Last: ${lastFertilize}</span>
+              <span class="care-next care-value ${nextFertilize.class}" id="fertilize-value">${this._t('card.next', { value: nextFertilize.text })}</span>
+              <span class="care-last" id="fertilize-last">${this._t('card.last', { value: lastFertilize })}</span>
             </div>
           </div>
           ${hasPruneMonths ? `
           <div class="care-row">
             <span class="care-icon">✂️</span>
-            <span class="care-label">Prune</span>
+            <span class="care-label">${this._t('card.prune')}</span>
             <div class="care-dates">
               <span class="care-next care-value ${pruneMonths.hasCurrentMonth ? 'due-today' : ''}" id="prune-value">${pruneMonths.html}</span>
-              <span class="care-last" id="prune-last">Last: ${lastPruned}</span>
+              <span class="care-last" id="prune-last">${this._t('card.last', { value: lastPruned })}</span>
             </div>
           </div>
           ` : ''}
           ${hasHarvestMonths ? `
           <div class="care-row">
             <span class="care-icon">🍎</span>
-            <span class="care-label">Harvest</span>
+            <span class="care-label">${this._t('card.harvest')}</span>
             <div class="care-dates">
               <span class="care-next care-value ${harvestMonths.hasCurrentMonth ? 'due-today' : ''}" id="harvest-value">${harvestMonths.html}</span>
-              <span class="care-last" id="harvest-last">Last: ${lastHarvested}</span>
+              <span class="care-last" id="harvest-last">${this._t('card.last', { value: lastHarvested })}</span>
             </div>
           </div>
           ` : ''}
           ${isLawn ? `
           <div class="care-row">
             <span class="care-icon">🌱</span>
-            <span class="care-label">Aeration</span>
+            <span class="care-label">${this._t('card.aeration')}</span>
             <div class="care-dates">
-              <span class="care-next care-value ${nextAeration.class}" id="aeration-value">Next: ${nextAeration.text}</span>
-              <span class="care-last" id="aeration-last">Last: ${lastAeration}</span>
+              <span class="care-next care-value ${nextAeration.class}" id="aeration-value">${this._t('card.next', { value: nextAeration.text })}</span>
+              <span class="care-last" id="aeration-last">${this._t('card.last', { value: lastAeration })}</span>
             </div>
           </div>
           <div class="care-row">
             <span class="care-icon">🏖️</span>
-            <span class="care-label">Sanding</span>
+            <span class="care-label">${this._t('card.sanding')}</span>
             <div class="care-dates">
-              <span class="care-next care-value ${nextSanding.class}" id="sanding-value">Next: ${nextSanding.text}</span>
-              <span class="care-last" id="sanding-last">Last: ${lastSanding}</span>
+              <span class="care-next care-value ${nextSanding.class}" id="sanding-value">${this._t('card.next', { value: nextSanding.text })}</span>
+              <span class="care-last" id="sanding-last">${this._t('card.last', { value: lastSanding })}</span>
             </div>
           </div>
           <div class="care-row">
             <span class="care-icon">🚜</span>
-            <span class="care-label">Mowed</span>
+            <span class="care-label">${this._t('card.mowed')}</span>
             <div class="care-dates">
-              <span class="care-last" id="mowed-last">Last: ${lastMowed}</span>
+              <span class="care-last" id="mowed-last">${this._t('card.last', { value: lastMowed })}</span>
             </div>
           </div>
           ` : ''}
         </div>
 
+        <div id="sensor-section">${this.formatSensors(attrs)}</div>
+
         <div class="actions">
           <button class="action-btn" id="btn-water">
-            💧 Watered
+            💧 ${this._t('actions.watered')}
           </button>
           <button class="action-btn" id="btn-fertilize">
-            🧪 Fertilized
+            🧪 ${this._t('actions.fertilized')}
           </button>
           ${hasPruneMonths ? `
           <button class="action-btn" id="btn-prune">
-            ✂️ Pruned
+            ✂️ ${this._t('actions.pruned')}
           </button>
           ` : ''}
           ${hasHarvestMonths ? `
           <button class="action-btn" id="btn-harvest">
-            🍎 Harvested
+            🍎 ${this._t('actions.harvested')}
           </button>
           ` : ''}
           ${isLawn ? `
           <button class="action-btn" id="btn-aerate">
-            🌱 Aerated
+            🌱 ${this._t('actions.aerated')}
           </button>
           <button class="action-btn" id="btn-sand">
-            🏖️ Sanded
+            🏖️ ${this._t('actions.sanded')}
           </button>
           <button class="action-btn" id="btn-mow">
-            🚜 Mowed
+            🚜 ${this._t('actions.mowed')}
           </button>
           ` : ''}
-          <button class="action-btn delete" id="btn-delete" title="Delete this plant from Notion">
-            🗑️ Delete
+          <button class="action-btn delete" id="btn-delete" title="${esc(this._t('actions.delete_title'))}">
+            🗑️ ${this._t('actions.delete')}
           </button>
           <div class="confirm-delete" id="confirm-delete">
-            <span class="confirm-label">Delete "${plantName}"?</span>
-            <button class="confirm-yes" id="confirm-yes">Yes, delete</button>
-            <button class="confirm-no" id="confirm-no">Cancel</button>
+            <span class="confirm-label">${this._t('actions.delete_confirm', { name: plantName })}</span>
+            <button class="confirm-yes" id="confirm-yes">${this._t('actions.delete_yes')}</button>
+            <button class="confirm-no" id="confirm-no">${this._t('actions.cancel')}</button>
           </div>
         </div>
 
@@ -762,7 +915,7 @@ class PlantCareCard extends HTMLElement {
       <div class="popup-overlay" id="popup-overlay">
         <div class="popup-content">
           <div class="popup-header">
-            <span class="popup-title">${plantName} - Details</span>
+            <span class="popup-title">${this._t('card.details', { name: plantName })}</span>
             <ha-icon class="popup-close" icon="mdi:close" id="popup-close"></ha-icon>
           </div>
           <table class="popup-table">
@@ -842,6 +995,8 @@ class PlantCareCard extends HTMLElement {
     this.shadowRoot.getElementById('confirm-yes')?.addEventListener('click', () => {
       this.deletePlant(entityIdForService);
     });
+
+    this._bindSensorChips();
   }
 }
 
@@ -917,16 +1072,16 @@ class PlantCareCardEditor extends HTMLElement {
       </style>
       <div class="editor">
         <div class="row">
-          <label for="entity">Plant Entity</label>
+          <label for="entity">${esc(t(resolveLanguage(this._hass), 'editor.plant_entity'))}</label>
           <select id="entity">
-            <option value="">Select a plant...</option>
+            <option value="">${esc(t(resolveLanguage(this._hass), 'editor.select_plant'))}</option>
             ${entities.map(e => {
               const state = this._hass.states[e];
               const name = state?.attributes?.plant_name || state?.attributes?.friendly_name || e;
-              return `<option value="${e}" ${e === selectedEntity ? 'selected' : ''}>${name}</option>`;
+              return `<option value="${esc(e)}" ${e === selectedEntity ? 'selected' : ''}>${esc(name)}</option>`;
             }).join('')}
           </select>
-          <div class="hint">Select a plant from your Notion Garden Care database</div>
+          <div class="hint">${esc(t(resolveLanguage(this._hass), 'editor.hint'))}</div>
         </div>
       </div>
     `;
@@ -955,10 +1110,25 @@ class AddPlantCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    const lang = resolveLanguage(hass);
+    if (lang !== this._lang) {
+      this._lang = lang;
+      ensureLanguage(lang).then(() => {
+        if (this._lang === lang) {
+          this.render();
+          this._initialized = true;
+        }
+      });
+      return;
+    }
     if (!this._initialized) {
       this.render();
       this._initialized = true;
     }
+  }
+
+  _t(key, params) {
+    return t(this._lang || _initialLang, key, params);
   }
 
   setConfig(config) {
@@ -1009,13 +1179,13 @@ class AddPlantCard extends HTMLElement {
     const plantName = input?.value?.trim();
 
     if (!plantName) {
-      this.showMessage('Please enter a plant name', 'error');
+      this.showMessage(this._t('add_plant.enter_name'), 'error');
       return;
     }
 
     // Check for duplicates
     if (this.plantExists(plantName)) {
-      this.showMessage(`"${plantName}" already exists in your garden`, 'error');
+      this.showMessage(this._t('add_plant.exists', { name: plantName }), 'error');
       return;
     }
 
@@ -1031,12 +1201,12 @@ class AddPlantCard extends HTMLElement {
       // Trigger a database refresh so the new plant entity appears automatically
       this._hass.callService('notion_garden_care', 'refresh_database', {}).catch(() => {});
 
-      this.showMessage(`"${plantName}" added! The dashboard will update in a moment.`, 'success');
+      this.showMessage(this._t('add_plant.added', { name: plantName }), 'success');
       input.value = '';
 
     } catch (err) {
       console.error('Failed to add plant:', err);
-      this.showMessage(`Failed to add plant: ${err.message}`, 'error');
+      this.showMessage(this._t('add_plant.failed', { error: err.message }), 'error');
     } finally {
       this._loading = false;
       this.updateUI();
@@ -1069,7 +1239,7 @@ class AddPlantCard extends HTMLElement {
 
     if (buttonEl) {
       buttonEl.disabled = this._loading;
-      buttonEl.textContent = this._loading ? 'Adding...' : 'Add Plant';
+      buttonEl.textContent = this._loading ? this._t('add_plant.adding') : this._t('add_plant.button');
     }
 
     if (spinnerEl) {
@@ -1196,7 +1366,7 @@ class AddPlantCard extends HTMLElement {
       <ha-card>
         <div class="header">
           <ha-icon class="header-icon" icon="mdi:plus-circle"></ha-icon>
-          <span class="header-title">Add New Plant</span>
+          <span class="header-title">${esc(this._t('add_plant.title'))}</span>
         </div>
 
         <div class="form-row">
@@ -1204,19 +1374,19 @@ class AddPlantCard extends HTMLElement {
             <input
               type="text"
               id="plant-name-input"
-              placeholder="Enter plant name (e.g., Lavender, Tomato, Oak Tree)"
+              placeholder="${esc(this._t('add_plant.placeholder'))}"
             />
           </div>
           <button class="add-btn" id="add-btn">
             <span class="spinner" id="spinner"></span>
-            Add Plant
+            ${esc(this._t('add_plant.button'))}
           </button>
         </div>
 
         <div class="message" id="message"></div>
 
         <div class="hint">
-          AI will automatically fill in care instructions, watering schedule, and more.
+          ${esc(this._t('add_plant.hint'))}
         </div>
       </ha-card>
     `;
@@ -1260,7 +1430,7 @@ class AddPlantCardEditor extends HTMLElement {
         }
       </style>
       <div class="editor">
-        <p class="note">This card provides a form to add new plants using AI. No configuration required.</p>
+        <p class="note">${esc(t(_initialLang, 'editor.add_plant_note'))}</p>
       </div>
     `;
   }
@@ -1288,15 +1458,15 @@ if (!customElements.get('add-plant-card-editor')) {
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'plant-care-card',
-  name: 'Plant Care Card',
-  description: 'Display plant care information from Notion Garden Care',
+  name: t(_initialLang, 'picker.plant_card_name'),
+  description: t(_initialLang, 'picker.plant_card_desc'),
   preview: true,
   documentationURL: 'https://github.com/pfalzcraft/notion-garden-care'
 });
 window.customCards.push({
   type: 'add-plant-card',
-  name: 'Add Plant Card',
-  description: 'Form to add new plants with AI-powered care info',
+  name: t(_initialLang, 'picker.add_card_name'),
+  description: t(_initialLang, 'picker.add_card_desc'),
   preview: false,
   documentationURL: 'https://github.com/pfalzcraft/notion-garden-care'
 });

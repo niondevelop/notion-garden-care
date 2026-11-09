@@ -1,0 +1,3 @@
+# Test dependencies (pin pytest-homeassistant-custom-component to your HA version)
+pytest-homeassistant-custom-component
+notion-client>=2.2.1

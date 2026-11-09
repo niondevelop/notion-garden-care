@@ -336,3 +336,75 @@ EXAMPLE_PLANTS = [
         "Special Notes": "Aerate and sand annually in spring or fall. Overseed bare patches.",
     }
 ]
+
+# ── Sensor monitoring (optional) ──────────────────────────────────────────
+# Plants can optionally be linked to real Home Assistant sensors (soil
+# moisture, temperature, ...). Without linked sensors everything works
+# exactly as before (schedule-based). The configuration lives in the config
+# entry options under CONF_PLANT_SENSORS, keyed by Notion page_id:
+#
+#   options["plant_sensors"] = {
+#       "<page_id>": {
+#           "moisture_entity": "sensor.basil_moisture",
+#           "min_moisture": 20, "max_moisture": 60,
+#           ...
+#       }
+#   }
+CONF_PLANT_SENSORS = "plant_sensors"
+CONF_PLANT = "plant"
+CONF_REMOVE_SENSORS = "remove_sensors"
+
+# Measurement types that can be linked. Order = display order.
+SENSOR_MOISTURE = "moisture"
+SENSOR_TEMPERATURE = "temperature"
+SENSOR_ILLUMINANCE = "illuminance"
+SENSOR_CONDUCTIVITY = "conductivity"
+SENSOR_HUMIDITY = "humidity"
+SENSOR_BATTERY = "battery"
+
+MONITORED_SENSOR_TYPES = [
+    SENSOR_MOISTURE,
+    SENSOR_TEMPERATURE,
+    SENSOR_ILLUMINANCE,
+    SENSOR_CONDUCTIVITY,
+    SENSOR_HUMIDITY,
+    SENSOR_BATTERY,
+]
+
+# Default thresholds suggested in the options form (None = no check).
+# Values are interpreted in the unit of the linked sensor.
+DEFAULT_SENSOR_THRESHOLDS: dict[str, tuple[float | None, float | None]] = {
+    SENSOR_MOISTURE: (20, 60),          # %
+    SENSOR_TEMPERATURE: (5, 35),        # °C
+    SENSOR_ILLUMINANCE: (None, None),   # lx
+    SENSOR_CONDUCTIVITY: (350, 2000),   # µS/cm
+    SENSOR_HUMIDITY: (None, None),      # %
+    SENSOR_BATTERY: (15, None),         # %
+}
+
+# Plant state labels produced by sensor readings (per type: (low, high)).
+# "Needs Water" is shared with the schedule-based logic on purpose, so
+# automations and the "Plants to Water" sensor keep working unchanged.
+SENSOR_PROBLEM_STATES: dict[str, tuple[str | None, str | None]] = {
+    SENSOR_MOISTURE: ("Needs Water", "Too Wet"),
+    SENSOR_TEMPERATURE: ("Too Cold", "Too Hot"),
+    SENSOR_ILLUMINANCE: ("Too Dark", "Too Bright"),
+    SENSOR_CONDUCTIVITY: ("Low Nutrients", "Too Much Fertilizer"),
+    SENSOR_HUMIDITY: ("Air Too Dry", "Air Too Humid"),
+    SENSOR_BATTERY: ("Sensor Battery Low", None),
+}
+
+
+def sensor_entity_key(sensor_type: str) -> str:
+    """Options key holding the entity_id for a measurement type."""
+    return f"{sensor_type}_entity"
+
+
+def sensor_min_key(sensor_type: str) -> str:
+    """Options key holding the lower threshold for a measurement type."""
+    return f"min_{sensor_type}"
+
+
+def sensor_max_key(sensor_type: str) -> str:
+    """Options key holding the upper threshold for a measurement type."""
+    return f"max_{sensor_type}"
